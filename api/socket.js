@@ -1,5 +1,4 @@
 const { Server } = require('socket.io');
-const { createServer } = require('http');
 
 // Store connections
 const testers = new Map();    // testerId → socket
@@ -13,17 +12,16 @@ const stats = {
 
 let io;
 
-function initializeSocketIO() {
+function initializeSocketIO(req, res) {
   if (io) return io;
   
-  const server = createServer();
-  io = new Server(server, {
+  io = new Server({
     cors: {
       origin: "*",
       methods: ["GET", "POST"],
       credentials: false
     },
-    transports: ['websocket', 'polling'],
+    transports: ['polling', 'websocket'],
     allowEIO3: true,
     pingTimeout: 60000,
     pingInterval: 25000
@@ -233,12 +231,12 @@ function initializeSocketIO() {
 // Vercel serverless function handler
 module.exports = (req, res) => {
   if (!io) {
-    initializeSocketIO();
+    initializeSocketIO(req, res);
   }
 
   // Handle Socket.IO requests
   if (req.url.startsWith('/socket.io/')) {
-    io.engine.handleRequest(req, res);
+    io.handleRequest(req, res);
   } else if (req.method === 'GET' && req.url === '/stats') {
     // Stats endpoint
     res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -258,6 +256,7 @@ module.exports = (req, res) => {
 
 // For local development
 if (require.main === module) {
+  const { createServer } = require('http');
   const server = createServer(module.exports);
   const port = process.env.PORT || 3001;
   
