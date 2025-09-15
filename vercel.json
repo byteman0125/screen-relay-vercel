@@ -1,38 +1,22 @@
 {
   "version": 2,
   "functions": {
-    "api/relay.js": {
+    "api/socket.js": {
       "maxDuration": 30
     }
   },
   "routes": [
     {
-      "src": "/register-tester",
-      "dest": "/api/relay.js"
-    },
-    {
-      "src": "/register-supporter", 
-      "dest": "/api/relay.js"
-    },
-    {
-      "src": "/send-screen",
-      "dest": "/api/relay.js"
-    },
-    {
-      "src": "/get-screen",
-      "dest": "/api/relay.js"
-    },
-    {
-      "src": "/heartbeat",
-      "dest": "/api/relay.js"
+      "src": "/socket.io/(.*)",
+      "dest": "/api/socket.js"
     },
     {
       "src": "/stats",
-      "dest": "/api/relay.js"
+      "dest": "/api/socket.js"
     },
     {
       "src": "/api/(.*)",
-      "dest": "/api/relay.js"
+      "dest": "/api/socket.js"
     }
   ]
 }
