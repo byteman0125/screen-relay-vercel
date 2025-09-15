@@ -290,6 +290,77 @@
             0%, 100% { opacity: 0.6; }
             50% { opacity: 1; }
         }
+
+        .tester-id-item {
+            background: rgba(34, 211, 238, 0.1);
+            border: 1px solid rgba(34, 211, 238, 0.3);
+            border-radius: 8px;
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+            animation: slideInLeft 0.5s ease-out;
+        }
+
+        .tester-id-item:hover {
+            background: rgba(34, 211, 238, 0.2);
+            border-color: rgba(34, 211, 238, 0.5);
+            transform: translateX(5px);
+        }
+
+        @keyframes slideInLeft {
+            from { opacity: 0; transform: translateX(-20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .tester-id-code {
+            color: #22d3ee;
+            font-weight: bold;
+        }
+
+        .tester-status {
+            color: #22c55e;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .status-dot-small {
+            width: 6px;
+            height: 6px;
+            background: #22c55e;
+            border-radius: 50%;
+            animation: blink 2s infinite;
+        }
+
+        .no-testers {
+            color: #64748b;
+            font-style: italic;
+            text-align: center;
+            padding: 1rem;
+            font-size: 0.9rem;
+        }
+
+        .copy-id-btn {
+            background: rgba(34, 211, 238, 0.1);
+            border: 1px solid rgba(34, 211, 238, 0.3);
+            color: #22d3ee;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            transition: all 0.3s ease;
+        }
+
+        .copy-id-btn:hover {
+            background: rgba(34, 211, 238, 0.2);
+            border-color: rgba(34, 211, 238, 0.5);
+        }
     </style>
 </head>
 <body>
@@ -326,6 +397,14 @@
                     <div class="stat-item loading">
                         <span class="stat-number" id="data-transferred">--</span>
                         <span class="stat-label">Data (MB)</span>
+                    </div>
+                </div>
+                
+                <!-- Active Tester IDs Section -->
+                <div id="active-testers-section" style="margin-top: 1.5rem;">
+                    <h4 style="color: #22d3ee; margin-bottom: 1rem; font-size: 1.1rem;">🎯 Active Tester IDs</h4>
+                    <div id="tester-ids-container" class="loading">
+                        <div class="no-testers" id="no-testers">No active testers</div>
                     </div>
                 </div>
             </div>
@@ -428,6 +507,55 @@ socket.emit('register-supporter', 'tester-id');
             });
         }
 
+        // Copy tester ID to clipboard
+        function copyTesterId(testerId, button) {
+            navigator.clipboard.writeText(testerId).then(() => {
+                button.textContent = 'Copied!';
+                button.style.background = 'rgba(34, 197, 94, 0.2)';
+                button.style.borderColor = 'rgba(34, 197, 94, 0.5)';
+                button.style.color = '#22c55e';
+                
+                setTimeout(() => {
+                    button.textContent = 'Copy';
+                    button.style.background = 'rgba(34, 211, 238, 0.1)';
+                    button.style.borderColor = 'rgba(34, 211, 238, 0.3)';
+                    button.style.color = '#22d3ee';
+                }, 2000);
+            });
+        }
+
+        // Update tester IDs display
+        function updateTesterIds(connections, activeTesters) {
+            const container = document.getElementById('tester-ids-container');
+            const noTestersMsg = document.getElementById('no-testers');
+            
+            // Filter out supporter connections to get only tester IDs
+            const testerIds = connections || [];
+            
+            if (activeTesters === 0 || testerIds.length === 0) {
+                container.innerHTML = '<div class="no-testers">No active testers</div>';
+                return;
+            }
+            
+            // Create tester ID items
+            const testerItems = testerIds.slice(0, activeTesters).map(testerId => `
+                <div class="tester-id-item">
+                    <div>
+                        <span class="tester-id-code">${testerId}</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div class="tester-status">
+                            <div class="status-dot-small"></div>
+                            Online
+                        </div>
+                        <button class="copy-id-btn" onclick="copyTesterId('${testerId}', this)">Copy</button>
+                    </div>
+                </div>
+            `).join('');
+            
+            container.innerHTML = testerItems;
+        }
+
         // Fetch and display service statistics
         function updateStats() {
             fetch('/stats')
@@ -442,6 +570,9 @@ socket.emit('register-supporter', 'tester-id');
                         Math.round((data.uptime || 0) / 60);
                     document.getElementById('data-transferred').textContent = 
                         Math.round((data.dataTransferred || 0) / 1024 / 1024);
+                    
+                    // Update tester IDs
+                    updateTesterIds(data.connections, data.activeTesters);
                     
                     // Remove loading animation
                     document.querySelectorAll('.loading').forEach(el => {
