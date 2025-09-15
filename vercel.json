@@ -1,5 +1,10 @@
 {
   "version": 2,
+  "functions": {
+    "api/socket.js": {
+      "maxDuration": 30
+    }
+  },
   "routes": [
     {
       "src": "/socket.io/(.*)",
@@ -8,6 +13,12 @@
     {
       "src": "/(.*)",
       "dest": "/api/socket.js"
+    }
+  ],
+  "builds": [
+    {
+      "src": "api/socket.js",
+      "use": "@vercel/node"
     }
   ]
 }

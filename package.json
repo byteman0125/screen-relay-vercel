@@ -5,7 +5,6 @@
   "main": "api/socket.js",
   "scripts": {
     "dev": "vercel dev",
-    "build": "echo 'No build needed'",
     "start": "node api/socket.js"
   },
   "dependencies": {
