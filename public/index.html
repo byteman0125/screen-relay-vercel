@@ -561,18 +561,20 @@ socket.emit('register-supporter', 'tester-id');
             fetch('/stats')
                 .then(response => response.json())
                 .then(data => {
+                    const stats = data.stats || data; // Handle both formats
+                    
                     document.getElementById('status-text').textContent = 'Service Online';
                     document.getElementById('active-connections').textContent = 
-                        (data.activeTesters + data.activeSupporters) || 0;
+                        (stats.activeTesters + stats.activeSupporters) || 0;
                     document.getElementById('total-sessions').textContent = 
-                        data.totalConnections || 0;
+                        stats.totalConnections || 0;
                     document.getElementById('uptime').textContent = 
-                        Math.round((data.uptime || 0) / 60);
+                        Math.round((stats.uptime || 0) / 60);
                     document.getElementById('data-transferred').textContent = 
-                        Math.round((data.dataTransferred || 0) / 1024 / 1024);
+                        Math.round((stats.dataTransferred || 0) / 1024 / 1024);
                     
                     // Update tester IDs
-                    updateTesterIds(data.connections, data.activeTesters);
+                    updateTesterIds(stats.connections, stats.activeTesters);
                     
                     // Remove loading animation
                     document.querySelectorAll('.loading').forEach(el => {
@@ -588,6 +590,9 @@ socket.emit('register-supporter', 'tester-id');
                     document.getElementById('total-sessions').textContent = '0';
                     document.getElementById('uptime').textContent = '0';
                     document.getElementById('data-transferred').textContent = '0';
+                    
+                    // Show no testers message
+                    updateTesterIds([], 0);
                     
                     document.querySelectorAll('.loading').forEach(el => {
                         el.classList.remove('loading');
