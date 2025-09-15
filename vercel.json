@@ -14,11 +14,5 @@
       "src": "/(.*)",
       "dest": "/api/socket.js"
     }
-  ],
-  "builds": [
-    {
-      "src": "api/socket.js",
-      "use": "@vercel/node"
-    }
   ]
 }

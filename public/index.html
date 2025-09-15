@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screen Relay Service</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: #0f172a;
+            color: #e2e8f0;
+        }
+        .container {
+            text-align: center;
+            padding: 3rem 0;
+        }
+        h1 {
+            color: #22d3ee;
+            margin-bottom: 1rem;
+        }
+        .status {
+            background: #1e293b;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 2rem 0;
+        }
+        .endpoint {
+            background: #334155;
+            padding: 1rem;
+            border-radius: 4px;
+            font-family: monospace;
+            margin: 1rem 0;
+        }
+        .info {
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔗 Screen Relay Service</h1>
+        <div class="status">
+            <h2>✅ Service Running</h2>
+            <p class="info">WebSocket relay service for remote screen sharing</p>
+        </div>
+        
+        <div class="info">
+            <h3>Socket.IO Endpoints:</h3>
+            <div class="endpoint">/socket.io/</div>
+            
+            <h3>API Endpoints:</h3>
+            <div class="endpoint">GET / - Health check</div>
+            <div class="endpoint">GET /stats - Connection statistics</div>
+            
+            <h3>How to Connect:</h3>
+            <p>Use Socket.IO client to connect to this service:</p>
+            <div class="endpoint">
+                const io = require('socket.io-client');<br>
+                const socket = io('https://your-domain.vercel.app');
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check service health
+        fetch('/stats')
+            .then(response => response.json())
+            .then(data => {
+                console.log('Service Stats:', data);
+            })
+            .catch(error => {
+                console.log('Service check failed:', error);
+            });
+    </script>
+</body>
+</html>
