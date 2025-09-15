@@ -253,8 +253,8 @@ const io = new Server(server, {
     });
   });
 
-// Start the server
-const PORT = process.env.PORT || 3001;
+// Start the server - Railway uses PORT environment variable
+const PORT = process.env.PORT || 3000;
 
 server.listen(PORT, () => {
   console.log(`🚀 Screen Relay Service running on port ${PORT}`);
