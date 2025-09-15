@@ -16,14 +16,15 @@ global.connections = global.connections || {
 
 const connections = global.connections;
 
-// Clean up old connections (older than 30 seconds)
+// Clean up old connections (older than 60 seconds to allow for slower heartbeats)
 function cleanupConnections() {
   const now = Date.now();
-  const timeout = 30000; // 30 seconds
+  const timeout = 60000; // 60 seconds (more generous timeout)
   
   // Clean up testers
   for (const [testerId, data] of connections.testers.entries()) {
     if (now - data.lastSeen > timeout) {
+      console.log(`Cleaning up inactive tester: ${testerId}`);
       connections.testers.delete(testerId);
       connections.stats.activeTesters--;
     }
@@ -32,6 +33,7 @@ function cleanupConnections() {
   // Clean up supporters
   for (const [testerId, data] of connections.supporters.entries()) {
     if (now - data.lastSeen > timeout) {
+      console.log(`Cleaning up inactive supporter: ${testerId}`);
       connections.supporters.delete(testerId);
       connections.stats.activeSupporters--;
     }
@@ -69,7 +71,7 @@ module.exports = (req, res) => {
     connections.stats.totalConnections++;
     connections.stats.activeTesters = connections.testers.size;
     
-    console.log(`Tester registered: ${testerId}`);
+    console.log(`✅ Tester registered: ${testerId} (Active testers: ${connections.testers.size})`);
     
     res.json({ 
       success: true, 
@@ -199,10 +201,14 @@ module.exports = (req, res) => {
         ...existing,
         lastSeen: Date.now()
       });
+      console.log(`💓 Tester heartbeat: ${testerId}`);
     } else if (clientType === 'supporter' && connections.supporters.has(testerId)) {
       connections.supporters.set(testerId, {
         lastSeen: Date.now()
       });
+      console.log(`💓 Supporter heartbeat: ${testerId}`);
+    } else {
+      console.log(`❌ Heartbeat failed: ${clientType} ${testerId} not found`);
     }
     
     res.json({ success: true, timestamp: Date.now() });
