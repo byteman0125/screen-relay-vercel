@@ -1,4 +1,7 @@
 const { Server } = require('socket.io');
+const { createServer } = require('http');
+const express = require('express');
+const path = require('path');
 
 // Store connections
 const testers = new Map();    // testerId → socket
@@ -7,25 +10,50 @@ const stats = {
   totalConnections: 0,
   activeTesters: 0,
   activeSupporters: 0,
-  dataTransferred: 0
+  dataTransferred: 0,
+  startTime: Date.now()
 };
 
-let io;
+// Create Express app and HTTP server
+const app = express();
+const server = createServer(app);
 
-function initializeSocketIO(req, res) {
-  if (io) return io;
-  
-  io = new Server({
-    cors: {
-      origin: "*",
-      methods: ["GET", "POST"],
-      credentials: false
-    },
-    transports: ['polling', 'websocket'],
-    allowEIO3: true,
-    pingTimeout: 60000,
-    pingInterval: 25000
+// Serve static files
+app.use(express.static(path.join(__dirname, '../public')));
+
+// API Routes
+app.get('/stats', (req, res) => {
+  res.json({
+    status: 'healthy',
+    service: 'Screen Relay Service',
+    version: '1.0.0',
+    stats: {
+      ...stats,
+      activeTesters: testers.size,
+      activeSupporters: supporters.size,
+      uptime: (Date.now() - stats.startTime) / 1000,
+      memory: process.memoryUsage(),
+      connections: Array.from(testers.keys()).concat(Array.from(supporters.keys()))
+    }
   });
+});
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
+// Initialize Socket.IO
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+    credentials: false
+  },
+  transports: ['websocket', 'polling'],
+  allowEIO3: true,
+  pingTimeout: 60000,
+  pingInterval: 25000
+});
 
   io.on('connection', (socket) => {
     stats.totalConnections++;
@@ -225,44 +253,15 @@ function initializeSocketIO(req, res) {
     });
   });
 
-  return io;
-}
+// Start the server
+const PORT = process.env.PORT || 3001;
 
-// Vercel serverless function handler
-module.exports = (req, res) => {
-  if (!io) {
-    initializeSocketIO(req, res);
-  }
+server.listen(PORT, () => {
+  console.log(`🚀 Screen Relay Service running on port ${PORT}`);
+  console.log(`📊 Stats: http://localhost:${PORT}/stats`);
+  console.log(`🌐 Landing: http://localhost:${PORT}/`);
+  console.log(`🔌 Socket.IO: ws://localhost:${PORT}/socket.io/`);
+});
 
-  // Handle Socket.IO requests
-  if (req.url.startsWith('/socket.io/')) {
-    io.handleRequest(req, res);
-  } else if (req.method === 'GET' && req.url === '/stats') {
-    // Stats endpoint
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      ...stats,
-      activeTesters: testers.size,
-      activeSupporters: supporters.size,
-      uptime: process.uptime(),
-      memory: process.memoryUsage(),
-      connections: Array.from(testers.keys()).concat(Array.from(supporters.keys()))
-    }));
-  } else {
-    res.writeHead(404, { 'Content-Type': 'text/plain' });
-    res.end('Not Found');
-  }
-};
-
-// For local development
-if (require.main === module) {
-  const { createServer } = require('http');
-  const server = createServer(module.exports);
-  const port = process.env.PORT || 3001;
-  
-  server.listen(port, () => {
-    console.log(`Screen Relay Service running on port ${port}`);
-    console.log(`Health check: http://localhost:${port}/`);
-    console.log(`Stats: http://localhost:${port}/stats`);
-  });
-}
+// Export for testing
+module.exports = { app, server, io };
