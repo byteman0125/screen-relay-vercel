@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "functions": {
+    "api/socket.js": {
+      "runtime": "@vercel/node@18"
+    }
+  },
+  "routes": [
+    {
+      "src": "/socket.io/(.*)",
+      "dest": "/api/socket.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/api/socket.js"
+    }
+  ]
+}
