@@ -239,20 +239,6 @@ module.exports = (req, res) => {
   // Handle Socket.IO requests
   if (req.url.startsWith('/socket.io/')) {
     io.engine.handleRequest(req, res);
-  } else if (req.method === 'GET' && req.url === '/') {
-    // Health check endpoint
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      status: 'healthy',
-      service: 'Screen Relay Service',
-      version: '1.0.0',
-      stats: {
-        ...stats,
-        activeTesters: testers.size,
-        activeSupporters: supporters.size,
-        uptime: process.uptime()
-      }
-    }));
   } else if (req.method === 'GET' && req.url === '/stats') {
     // Stats endpoint
     res.writeHead(200, { 'Content-Type': 'application/json' });
