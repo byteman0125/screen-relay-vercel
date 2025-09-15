@@ -42,17 +42,22 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
-// Initialize Socket.IO
+// Initialize Socket.IO with performance optimizations
 const io = new Server(server, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"],
     credentials: false
   },
-  transports: ['websocket', 'polling'],
+  transports: ['websocket'],        // WebSocket only for best performance
   allowEIO3: true,
-  pingTimeout: 60000,
-  pingInterval: 25000
+  pingTimeout: 30000,               // Faster ping timeout
+  pingInterval: 10000,              // More frequent pings for better connection health
+  maxHttpBufferSize: 1e8,          // 100MB buffer for large frames
+  compression: false,               // Disable compression for speed
+  perMessageDeflate: false,         // Disable per-message compression
+  httpCompression: false,           // Disable HTTP compression
+  cookie: false                     // Disable cookies for speed
 });
 
   io.on('connection', (socket) => {
