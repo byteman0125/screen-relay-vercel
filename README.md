@@ -37,14 +37,14 @@ wss://your-relay-url.vercel.app/socket.io/
 
 ## 🔧 Client Integration
 
-### Tester Registration:
+### Server Registration:
 ```javascript
-socket.emit('register-tester', 'unique-tester-id');
+socket.emit('register-server', 'unique-server-id');
 ```
 
-### Supporter Registration:
+### Viewer Registration:
 ```javascript
-socket.emit('register-supporter', 'tester-id-to-connect');
+socket.emit('register-viewer', 'server-id-to-connect');
 ```
 
 ### Events Relayed:
@@ -59,8 +59,8 @@ socket.emit('register-supporter', 'tester-id-to-connect');
 
 ## 📊 Connection Flow
 
-1. **Tester connects**: `register-tester` with unique ID
-2. **Supporter connects**: `register-supporter` with tester ID  
+1. **Server connects**: `register-server` with unique ID
+2. **Viewer connects**: `register-viewer` with server ID  
 3. **Automatic pairing**: Both get notified when paired
 4. **Data relay**: All events automatically forwarded
 5. **Disconnection handling**: Clean cleanup on disconnect

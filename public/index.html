@@ -291,7 +291,7 @@
             50% { opacity: 1; }
         }
 
-        .tester-id-item {
+        .server-id-item {
             background: rgba(34, 211, 238, 0.1);
             border: 1px solid rgba(34, 211, 238, 0.3);
             border-radius: 8px;
@@ -317,12 +317,12 @@
             to { opacity: 1; transform: translateX(0); }
         }
 
-        .tester-id-code {
+        .server-id-code {
             color: #22d3ee;
             font-weight: bold;
         }
 
-        .tester-status {
+        .server-status {
             color: #22c55e;
             font-size: 0.8rem;
             display: flex;
@@ -338,7 +338,7 @@
             animation: blink 2s infinite;
         }
 
-        .no-testers {
+        .no-servers {
             color: #64748b;
             font-style: italic;
             text-align: center;
@@ -400,11 +400,11 @@
                     </div>
                 </div>
                 
-                <!-- Active Tester IDs Section -->
+                <!-- Active Server IDs Section -->
                 <div id="active-testers-section" style="margin-top: 1.5rem;">
-                    <h4 style="color: #22d3ee; margin-bottom: 1rem; font-size: 1.1rem;">🎯 Active Tester IDs</h4>
-                    <div id="tester-ids-container" class="loading">
-                        <div class="no-testers" id="no-testers">No active testers</div>
+                    <h4 style="color: #22d3ee; margin-bottom: 1rem; font-size: 1.1rem;">🎯 Active Server IDs</h4>
+                    <div id="server-ids-container" class="loading">
+                        <div class="no-servers" id="no-servers">No active servers</div>
                     </div>
                 </div>
             </div>
@@ -429,11 +429,11 @@
 const io = require('socket.io-client');
 const socket = io('<span id="current-url">loading...</span>');
 
-// Register as tester
-socket.emit('register-tester', 'your-unique-id');
+// Register as server
+socket.emit('register-server', 'your-unique-id');
 
-// Register as supporter  
-socket.emit('register-supporter', 'tester-id');
+// Register as viewer  
+socket.emit('register-viewer', 'server-id');
                 </div>
             </div>
 
@@ -507,9 +507,9 @@ socket.emit('register-supporter', 'tester-id');
             });
         }
 
-        // Copy tester ID to clipboard
-        function copyTesterId(testerId, button) {
-            navigator.clipboard.writeText(testerId).then(() => {
+        // Copy server ID to clipboard
+        function copyServerId(serverId, button) {
+            navigator.clipboard.writeText(serverId).then(() => {
                 button.textContent = 'Copied!';
                 button.style.background = 'rgba(34, 197, 94, 0.2)';
                 button.style.borderColor = 'rgba(34, 197, 94, 0.5)';
@@ -524,36 +524,36 @@ socket.emit('register-supporter', 'tester-id');
             });
         }
 
-        // Update tester IDs display
-        function updateTesterIds(connections, activeTesters) {
-            const container = document.getElementById('tester-ids-container');
-            const noTestersMsg = document.getElementById('no-testers');
+        // Update server IDs display
+        function updateServerIds(connections, activeServers) {
+            const container = document.getElementById('server-ids-container');
+            const noServersMsg = document.getElementById('no-servers');
             
-            // Filter out supporter connections to get only tester IDs
-            const testerIds = connections || [];
+            // Filter out viewer connections to get only server IDs
+            const serverIds = connections || [];
             
-            if (activeTesters === 0 || testerIds.length === 0) {
-                container.innerHTML = '<div class="no-testers">No active testers</div>';
+            if (activeServers === 0 || serverIds.length === 0) {
+                container.innerHTML = '<div class="no-servers">No active servers</div>';
                 return;
             }
             
-            // Create tester ID items
-            const testerItems = testerIds.slice(0, activeTesters).map(testerId => `
-                <div class="tester-id-item">
+            // Create server ID items
+            const serverItems = serverIds.slice(0, activeServers).map(serverId => `
+                <div class="server-id-item">
                     <div>
-                        <span class="tester-id-code">${testerId}</span>
+                        <span class="server-id-code">${serverId}</span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 1rem;">
-                        <div class="tester-status">
+                        <div class="server-status">
                             <div class="status-dot-small"></div>
                             Online
                         </div>
-                        <button class="copy-id-btn" onclick="copyTesterId('${testerId}', this)">Copy</button>
+                        <button class="copy-id-btn" onclick="copyServerId('${serverId}', this)">Copy</button>
                     </div>
                 </div>
             `).join('');
             
-            container.innerHTML = testerItems;
+            container.innerHTML = serverItems;
         }
 
         // Fetch and display service statistics
@@ -565,7 +565,7 @@ socket.emit('register-supporter', 'tester-id');
                     
                     document.getElementById('status-text').textContent = 'Service Online';
                     document.getElementById('active-connections').textContent = 
-                        (stats.activeTesters + stats.activeSupporters) || 0;
+                        (stats.activeServers + stats.activeViewers) || 0;
                     document.getElementById('total-sessions').textContent = 
                         stats.totalConnections || 0;
                     document.getElementById('uptime').textContent = 
@@ -573,8 +573,8 @@ socket.emit('register-supporter', 'tester-id');
                     document.getElementById('data-transferred').textContent = 
                         Math.round((stats.dataTransferred || 0) / 1024 / 1024);
                     
-                    // Update tester IDs
-                    updateTesterIds(stats.connections, stats.activeTesters);
+                    // Update server IDs
+                    updateServerIds(stats.connections, stats.activeServers);
                     
                     // Remove loading animation
                     document.querySelectorAll('.loading').forEach(el => {
@@ -591,8 +591,8 @@ socket.emit('register-supporter', 'tester-id');
                     document.getElementById('uptime').textContent = '0';
                     document.getElementById('data-transferred').textContent = '0';
                     
-                    // Show no testers message
-                    updateTesterIds([], 0);
+                    // Show no servers message
+                    updateServerIds([], 0);
                     
                     document.querySelectorAll('.loading').forEach(el => {
                         el.classList.remove('loading');

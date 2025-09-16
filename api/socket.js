@@ -4,12 +4,12 @@ const express = require('express');
 const path = require('path');
 
 // Store connections
-const testers = new Map();    // testerId → socket
-const supporters = new Map(); // testerId → socket
+const servers = new Map();    // serverId → socket
+const viewers = new Map(); // serverId → socket
 const stats = {
   totalConnections: 0,
-  activeTesters: 0,
-  activeSupporters: 0,
+  activeServers: 0,
+  activeViewers: 0,
   dataTransferred: 0,
   startTime: Date.now()
 };
@@ -29,11 +29,11 @@ app.get('/stats', (req, res) => {
     version: '1.0.0',
     stats: {
       ...stats,
-      activeTesters: testers.size,
-      activeSupporters: supporters.size,
+      activeServers: servers.size,
+      activeViewers: viewers.size,
       uptime: (Date.now() - stats.startTime) / 1000,
       memory: process.memoryUsage(),
-      connections: Array.from(testers.keys()).concat(Array.from(supporters.keys()))
+      connections: Array.from(servers.keys()).concat(Array.from(viewers.keys()))
     }
   });
 });
@@ -67,82 +67,82 @@ const io = new Server(server, {
     // Generate unique session ID for this connection
     socket.sessionId = socket.id;
 
-    // Tester registration
-    socket.on('register-tester', (testerId) => {
-      console.log(`Tester registered: ${testerId} (Socket: ${socket.id})`);
+    // Server registration
+    socket.on('register-server', (serverId) => {
+      console.log(`Server registered: ${serverId} (Socket: ${socket.id})`);
       
-      // Remove from supporters if accidentally registered there
-      if (supporters.has(testerId)) {
-        supporters.delete(testerId);
-        stats.activeSupporters--;
+      // Remove from viewers if accidentally registered there
+      if (viewers.has(serverId)) {
+        viewers.delete(serverId);
+        stats.activeViewers--;
       }
       
-      // Store tester
-      testers.set(testerId, socket);
-      socket.testerId = testerId;
-      socket.clientType = 'tester';
-      stats.activeTesters++;
+      // Store server
+      servers.set(serverId, socket);
+      socket.serverId = serverId;
+      socket.clientType = 'server';
+      stats.activeServers++;
       
-      // Notify tester of registration success
+      // Notify server of registration success
       socket.emit('registered', { 
-        type: 'tester', 
-        testerId: testerId,
+        type: 'server', 
+        serverId: serverId,
         sessionId: socket.sessionId
       });
       
-      // Check if supporter is waiting
-      if (supporters.has(testerId)) {
-        const supporter = supporters.get(testerId);
-        console.log(`Pairing tester ${testerId} with waiting supporter`);
-        supporter.emit('tester-connected', { testerId, sessionId: socket.sessionId });
-        socket.emit('supporter-connected', { testerId, sessionId: supporter.sessionId });
+      // Check if viewer is waiting
+      if (viewers.has(serverId)) {
+        const viewer = viewers.get(serverId);
+        console.log(`Pairing server ${serverId} with waiting viewer`);
+        viewer.emit('server-connected', { serverId, sessionId: socket.sessionId });
+        socket.emit('viewer-connected', { serverId, sessionId: viewer.sessionId });
       }
       
-      console.log(`Active testers: ${stats.activeTesters}, supporters: ${stats.activeSupporters}`);
+      console.log(`Active servers: ${stats.activeServers}, viewers: ${stats.activeViewers}`);
     });
 
-    // Supporter registration  
-    socket.on('register-supporter', (testerId) => {
-      console.log(`Supporter registered for tester: ${testerId} (Socket: ${socket.id})`);
+    // Viewer registration  
+    socket.on('register-viewer', (serverId) => {
+      console.log(`Viewer registered for server: ${serverId} (Socket: ${socket.id})`);
       
-      // Remove from testers if accidentally registered there
-      if (testers.has(testerId) && testers.get(testerId).id === socket.id) {
-        testers.delete(testerId);
-        stats.activeTesters--;
+      // Remove from servers if accidentally registered there
+      if (servers.has(serverId) && servers.get(serverId).id === socket.id) {
+        servers.delete(serverId);
+        stats.activeServers--;
       }
       
-      // Store supporter
-      supporters.set(testerId, socket);
-      socket.testerId = testerId;
-      socket.clientType = 'supporter';
-      stats.activeSupporters++;
+      // Store viewer
+      viewers.set(serverId, socket);
+      socket.serverId = serverId;
+      socket.clientType = 'viewer';
+      stats.activeViewers++;
       
-      // Notify supporter of registration success
+      // Notify viewer of registration success
       socket.emit('registered', { 
-        type: 'supporter', 
-        testerId: testerId,
+        type: 'viewer', 
+        serverId: serverId,
         sessionId: socket.sessionId
       });
       
-      // Check if tester is available
-      if (testers.has(testerId)) {
-        const tester = testers.get(testerId);
-        console.log(`Pairing supporter with tester ${testerId}`);
-        tester.emit('supporter-connected', { testerId, sessionId: socket.sessionId });
-        socket.emit('tester-connected', { testerId, sessionId: tester.sessionId });
+      // Check if server is available
+      if (servers.has(serverId)) {
+        const server = servers.get(serverId);
+        console.log(`Pairing viewer with server ${serverId}`);
+        server.emit('viewer-connected', { serverId, sessionId: socket.sessionId });
+        socket.emit('server-connected', { serverId, sessionId: server.sessionId });
       } else {
-        console.log(`Supporter waiting for tester: ${testerId}`);
-        socket.emit('waiting-for-tester', { testerId });
+        console.log(`Viewer waiting for server: ${serverId}`);
+        socket.emit('waiting-for-server', { serverId });
       }
       
-      console.log(`Active testers: ${stats.activeTesters}, supporters: ${stats.activeSupporters}`);
+      console.log(`Active servers: ${stats.activeServers}, viewers: ${stats.activeViewers}`);
     });
 
-    // Relay screen data from tester to supporter
+    // Relay screen data from server to viewer
     socket.on('screenData', (data) => {
-      if (socket.clientType === 'tester' && supporters.has(socket.testerId)) {
-        const supporter = supporters.get(socket.testerId);
-        supporter.emit('screenData', data);
+      if (socket.clientType === 'server' && viewers.has(socket.serverId)) {
+        const viewer = viewers.get(socket.serverId);
+        viewer.emit('screenData', data);
         
         // Track data transfer
         if (data.image) {
@@ -151,11 +151,11 @@ const io = new Server(server, {
       }
     });
 
-    // Relay video data from tester to supporter
+    // Relay video data from server to viewer
     socket.on('videoData', (data) => {
-      if (socket.clientType === 'tester' && supporters.has(socket.testerId)) {
-        const supporter = supporters.get(socket.testerId);
-        supporter.emit('videoData', data);
+      if (socket.clientType === 'server' && viewers.has(socket.serverId)) {
+        const viewer = viewers.get(socket.serverId);
+        viewer.emit('videoData', data);
         
         // Track data transfer
         if (data.data) {
@@ -164,44 +164,44 @@ const io = new Server(server, {
       }
     });
 
-    // Relay mouse events from supporter to tester
+    // Relay mouse events from viewer to server
     socket.on('mouseMove', (data) => {
-      if (socket.clientType === 'supporter' && testers.has(socket.testerId)) {
-        testers.get(socket.testerId).emit('mouseMove', data);
+      if (socket.clientType === 'viewer' && servers.has(socket.serverId)) {
+        servers.get(socket.serverId).emit('mouseMove', data);
       }
     });
 
     socket.on('mouseClick', (data) => {
-      if (socket.clientType === 'supporter' && testers.has(socket.testerId)) {
-        testers.get(socket.testerId).emit('mouseClick', data);
+      if (socket.clientType === 'viewer' && servers.has(socket.serverId)) {
+        servers.get(socket.serverId).emit('mouseClick', data);
       }
     });
 
-    // Relay keyboard events from supporter to tester
+    // Relay keyboard events from viewer to server
     socket.on('keyPress', (data) => {
-      if (socket.clientType === 'supporter' && testers.has(socket.testerId)) {
-        testers.get(socket.testerId).emit('keyPress', data);
+      if (socket.clientType === 'viewer' && servers.has(socket.serverId)) {
+        servers.get(socket.serverId).emit('keyPress', data);
       }
     });
 
     // Relay chat messages
     socket.on('chatMessage', (data) => {
-      const targetMap = socket.clientType === 'tester' ? supporters : testers;
-      if (targetMap.has(socket.testerId)) {
-        targetMap.get(socket.testerId).emit('chatMessage', data);
+      const targetMap = socket.clientType === 'server' ? viewers : servers;
+      if (targetMap.has(socket.serverId)) {
+        targetMap.get(socket.serverId).emit('chatMessage', data);
       }
     });
 
     // Handle control requests
     socket.on('start-screen-sharing', () => {
-      if (socket.clientType === 'supporter' && testers.has(socket.testerId)) {
-        testers.get(socket.testerId).emit('start-screen-sharing');
+      if (socket.clientType === 'viewer' && servers.has(socket.serverId)) {
+        servers.get(socket.serverId).emit('start-screen-sharing');
       }
     });
 
     socket.on('stop-screen-sharing', () => {
-      if (socket.clientType === 'supporter' && testers.has(socket.testerId)) {
-        testers.get(socket.testerId).emit('stop-screen-sharing');
+      if (socket.clientType === 'viewer' && servers.has(socket.serverId)) {
+        servers.get(socket.serverId).emit('stop-screen-sharing');
       }
     });
 
@@ -214,8 +214,8 @@ const io = new Server(server, {
     socket.on('get-stats', () => {
       socket.emit('stats', {
         ...stats,
-        activeTesters: testers.size,
-        activeSupporters: supporters.size,
+        activeServers: servers.size,
+        activeViewers: viewers.size,
         uptime: process.uptime(),
         memory: process.memoryUsage()
       });
@@ -225,31 +225,31 @@ const io = new Server(server, {
     socket.on('disconnect', (reason) => {
       console.log(`Client disconnected: ${socket.id} (${socket.clientType}) - Reason: ${reason}`);
       
-      if (socket.clientType === 'tester' && socket.testerId) {
-        testers.delete(socket.testerId);
-        stats.activeTesters--;
+      if (socket.clientType === 'server' && socket.serverId) {
+        servers.delete(socket.serverId);
+        stats.activeServers--;
         
-        // Notify supporter of disconnection
-        if (supporters.has(socket.testerId)) {
-          supporters.get(socket.testerId).emit('tester-disconnected', { 
-            testerId: socket.testerId, 
+        // Notify viewer of disconnection
+        if (viewers.has(socket.serverId)) {
+          viewers.get(socket.serverId).emit('server-disconnected', { 
+            serverId: socket.serverId, 
             reason 
           });
         }
-      } else if (socket.clientType === 'supporter' && socket.testerId) {
-        supporters.delete(socket.testerId);
-        stats.activeSupporters--;
+      } else if (socket.clientType === 'viewer' && socket.serverId) {
+        viewers.delete(socket.serverId);
+        stats.activeViewers--;
         
-        // Notify tester of disconnection
-        if (testers.has(socket.testerId)) {
-          testers.get(socket.testerId).emit('supporter-disconnected', { 
-            testerId: socket.testerId, 
+        // Notify server of disconnection
+        if (servers.has(socket.serverId)) {
+          servers.get(socket.serverId).emit('viewer-disconnected', { 
+            serverId: socket.serverId, 
             reason 
           });
         }
       }
       
-      console.log(`Active testers: ${testers.size}, supporters: ${supporters.size}`);
+      console.log(`Active servers: ${servers.size}, viewers: ${viewers.size}`);
     });
 
     // Error handling
