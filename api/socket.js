@@ -184,6 +184,19 @@ const io = new Server(server, {
       }
     });
 
+    // Relay control messages between viewer and server
+    socket.on('control-message', (data) => {
+      if (socket.clientType === 'viewer' && servers.has(socket.serverId)) {
+        // Relay control message from viewer to server
+        servers.get(socket.serverId).emit('control-message', data);
+        console.log(`🎮 Control message relayed from viewer to server ${socket.serverId}:`, data.type, data.action || data.key || 'move');
+      } else if (socket.clientType === 'server' && viewers.has(socket.serverId)) {
+        // Relay control status from server to viewer
+        viewers.get(socket.serverId).emit('control-message', data);
+        console.log(`🎮 Control status relayed from server to viewer ${socket.serverId}:`, data.type, data.status || data.message);
+      }
+    });
+
     // Relay chat messages
     socket.on('chatMessage', (data) => {
       const targetMap = socket.clientType === 'server' ? viewers : servers;
