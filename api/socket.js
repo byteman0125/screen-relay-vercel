@@ -18,6 +18,14 @@ const stats = {
 const app = express();
 const server = createServer(app);
 
+// Create separate server for high-speed mouse control
+const mouseApp = express();
+const mouseServer = createServer(mouseApp);
+
+// Store mouse control connections
+const mouseServers = new Map();  // serverId → socket
+const mouseViewers = new Map();  // serverId → socket
+
 // Serve static files
 app.use(express.static(path.join(__dirname, '../public')));
 
@@ -271,8 +279,91 @@ const io = new Server(server, {
     });
   });
 
-// Start the server - Railway uses PORT environment variable
+// Initialize high-speed mouse control Socket.IO server
+const mouseIo = new Server(mouseServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+    credentials: false
+  },
+  transports: ['websocket'],        // WebSocket only for maximum speed
+  allowEIO3: true,
+  pingTimeout: 5000,                // Very short timeout for responsiveness
+  pingInterval: 2000,               // Frequent pings for low latency
+  maxHttpBufferSize: 1e4,          // Small buffer - only mouse data
+  compression: false,               // Disable compression for speed
+  perMessageDeflate: false,         // Disable compression for speed
+  httpCompression: false,           // Disable compression for speed
+  cookie: false                     // Disable cookies for speed
+});
+
+// High-speed mouse control event handling
+mouseIo.on('connection', (socket) => {
+  console.log(`🖱️ Mouse control client connected: ${socket.id}`);
+  
+  // Mouse server registration
+  socket.on('register-mouse-server', (serverId) => {
+    console.log(`🖱️ Mouse server registered: ${serverId} (Socket: ${socket.id})`);
+    mouseServers.set(serverId, socket);
+    socket.serverId = serverId;
+    socket.clientType = 'mouse-server';
+    
+    socket.emit('mouse-registered', { type: 'mouse-server', serverId });
+    
+    // Notify waiting viewer if any
+    if (mouseViewers.has(serverId)) {
+      const viewer = mouseViewers.get(serverId);
+      viewer.emit('mouse-server-connected', { serverId });
+      socket.emit('mouse-viewer-connected', { serverId });
+    }
+  });
+  
+  // Mouse viewer registration
+  socket.on('register-mouse-viewer', (serverId) => {
+    console.log(`🖱️ Mouse viewer registered: ${serverId} (Socket: ${socket.id})`);
+    mouseViewers.set(serverId, socket);
+    socket.serverId = serverId;
+    socket.clientType = 'mouse-viewer';
+    
+    socket.emit('mouse-registered', { type: 'mouse-viewer', serverId });
+    
+    // Notify server if available
+    if (mouseServers.has(serverId)) {
+      const server = mouseServers.get(serverId);
+      server.emit('mouse-viewer-connected', { serverId });
+      socket.emit('mouse-server-connected', { serverId });
+    }
+  });
+  
+  // High-speed mouse input relay
+  socket.on('mouse-input', (data) => {
+    if (socket.clientType === 'mouse-viewer' && mouseServers.has(socket.serverId)) {
+      // Relay immediately without processing
+      mouseServers.get(socket.serverId).emit('mouse-input', data);
+    }
+  });
+  
+  // Handle disconnection
+  socket.on('disconnect', (reason) => {
+    console.log(`🖱️ Mouse control client disconnected: ${socket.id} (${socket.clientType})`);
+    
+    if (socket.clientType === 'mouse-server' && socket.serverId) {
+      mouseServers.delete(socket.serverId);
+      if (mouseViewers.has(socket.serverId)) {
+        mouseViewers.get(socket.serverId).emit('mouse-server-disconnected', { serverId: socket.serverId });
+      }
+    } else if (socket.clientType === 'mouse-viewer' && socket.serverId) {
+      mouseViewers.delete(socket.serverId);
+      if (mouseServers.has(socket.serverId)) {
+        mouseServers.get(socket.serverId).emit('mouse-viewer-disconnected', { serverId: socket.serverId });
+      }
+    }
+  });
+});
+
+// Start the servers - Railway uses PORT environment variable
 const PORT = process.env.PORT || 3000;
+const MOUSE_PORT = process.env.MOUSE_PORT || 3001;
 
 server.listen(PORT, () => {
   console.log(`🚀 Screen Relay Service running on port ${PORT}`);
@@ -281,5 +372,11 @@ server.listen(PORT, () => {
   console.log(`🔌 Socket.IO: ws://localhost:${PORT}/socket.io/`);
 });
 
+mouseServer.listen(MOUSE_PORT, () => {
+  console.log(`🖱️ High-Speed Mouse Control Service running on port ${MOUSE_PORT}`);
+  console.log(`⚡ Optimized for low-latency mouse input`);
+  console.log(`🔌 Mouse Socket.IO: ws://localhost:${MOUSE_PORT}/socket.io/`);
+});
+
 // Export for testing
-module.exports = { app, server, io };
+module.exports = { app, server, io, mouseApp, mouseServer, mouseIo };
